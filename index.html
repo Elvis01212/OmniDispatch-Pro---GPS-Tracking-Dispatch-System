@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniDispatch Pro - GPS Tracking & Dispatch System</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Glassmorphism visual depth */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html:not(.dark) .glass-panel {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .glass-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    html:not(.dark) .glass-card {
+      background: rgba(241, 245, 249, 0.8);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.2);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.5);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3b82f6;
+    }
+
+    /* Canvas Map Grid Background */
+    #mapCanvas {
+      cursor: crosshair;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
+      50% { box-shadow: 0 0 25px rgba(59, 130, 246, 0.8); }
+    }
+    .pulse-glow {
+      animation: pulseGlow 2s infinite;
+    }
+
+    @keyframes lockFlash {
+      0% { border-color: #ef4444; background: rgba(239, 68, 68, 0.2); }
+      50% { border-color: #f59e0b; background: rgba(245, 158, 11, 0.2); }
+      100% { border-color: #10b981; background: rgba(16, 185, 129, 0.1); }
+    }
+    .lock-active {
+      animation: lockFlash 0.6s ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col transition-colors">
+
+  <!-- Application Header -->
+  <header class="glass-panel sticky top-0 z-50 border-b border-slate-800 dark:border-slate-800 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="p-2.5 bg-blue-600/20 border border-blue-500/40 rounded-xl text-blue-400">
+          <i class="fa-solid fa-location-crosshairs text-2xl animate-spin" style="animation-duration: 8s;"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">
+            OmniDispatch GPS Tracker
+          </h1>
+          <p class="text-xs text-slate-400 dark:text-slate-400 font-medium">Real-Time Mutual GPS Tracking & Dispatch System</p>
+        </div>
+      </div>
+
+      <!-- Center Perspective Switcher Pills -->
+      <div class="flex items-center bg-slate-900/80 dark:bg-slate-900/80 border border-slate-800 p-1 rounded-xl">
+        <button id="viewDispatchBtn" onclick="switchPerspective('DISPATCH')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 bg-blue-600 text-white shadow">
+          <i class="fa-solid fa-layer-group"></i>
+          <span>Dispatch Control</span>
+        </button>
+        <button id="viewCustomerBtn" onclick="switchPerspective('CUSTOMER')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition flex items-center space-x-2">
+          <i class="fa-solid fa-user"></i>
+          <span>Customer View</span>
+        </button>
+        <button id="viewDriverBtn" onclick="switchPerspective('DRIVER')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition flex items-center space-x-2">
+          <i class="fa-solid fa-steering-wheel"></i>
+          <span>Driver View</span>
+        </button>
+      </div>
+
+      <!-- Action Controls & Settings -->
+      <div class="flex items-center space-x-2">
+        <!-- Audio Switcher -->
+        <button id="soundToggleBtn" onclick="toggleAudio()" class="p-2 glass-card hover:bg-slate-800 rounded-lg text-slate-300 transition" title="Toggle Sound">
+          <i id="soundIcon" class="fa-solid fa-volume-high text-blue-400"></i>
+        </button>
+        <!-- Dark Mode Switcher -->
+        <button onclick="toggleTheme()" class="p-2 glass-card hover:bg-slate-800 rounded-lg text-slate-300 transition" title="Toggle Light/Dark Theme">
+          <i id="themeIcon" class="fa-solid fa-moon text-amber-400"></i>
+        </button>
+        <!-- Browser GPS Location Button -->
+        <button onclick="acquireBrowserGPS()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg shadow-lg shadow-emerald-600/20 transition flex items-center space-x-1.5">
+          <i class="fa-solid fa-crosshairs"></i>
+          <span>Use Device GPS</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+    <!-- LEFT SIDEBAR: Control Panel & Queue Visualizer (5 Cols) -->
+    <div class="lg:col-span-5 flex flex-col space-y-5">
+
+      <!-- View Context Banner (Reflects Customer/Driver Perspective) -->
+      <div id="perspectiveHeader" class="glass-panel p-4 rounded-2xl border-l-4 border-l-blue-500">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2.5">
+            <span id="perspectiveIcon" class="p-2 rounded-xl bg-blue-500/20 text-blue-400 text-lg">
+              <i class="fa-solid fa-tower-broadcast"></i>
+            </span>
+            <div>
+              <h2 id="perspectiveTitle" class="text-sm font-bold uppercase tracking-wider text-slate-200">Dispatch Central Overview</h2>
+              <p id="perspectiveDesc" class="text-xs text-slate-400">Monitoring all active fleet nodes & FIFO queue jobs</p>
+            </div>
+          </div>
+          <span id="perspectiveBadge" class="text-[10px] font-mono px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold">
+            MASTER FEED
+          </span>
+        </div>
+      </div>
+
+      <!-- Quick Action Controls -->
+      <div class="glass-panel p-4 rounded-2xl space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center">
+            <i class="fa-solid fa-sliders text-blue-400 mr-2"></i> Quick Dispatch Actions
+          </h2>
+          <span class="text-[10px] font-mono text-slate-500">Thread-Safe FIFO Engine</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="openRequestModal('RIDE')" class="p-2.5 bg-blue-600/20 border border-blue-500/40 hover:bg-blue-600/30 text-blue-300 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition">
+            <i class="fa-solid fa-car"></i>
+            <span>+ Ride Request</span>
+          </button>
+          <button onclick="openRequestModal('DELIVERY')" class="p-2.5 bg-amber-600/20 border border-amber-500/40 hover:bg-amber-600/30 text-amber-300 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition">
+            <i class="fa-solid fa-box font-bold"></i>
+            <span>+ Delivery Package</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button id="manualDispatchBtn" onclick="triggerManualDispatch()" class="p-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center justify-center space-x-1.5 shadow-md shadow-emerald-900/40 transition">
+            <i class="fa-solid fa-bolt"></i>
+            <span>Dispatch Front Queue Job</span>
+          </button>
+          <button onclick="spawnDriver()" class="p-2.5 bg-purple-600/20 border border-purple-500/40 hover:bg-purple-600/30 text-purple-300 rounded-xl font-bold text-xs flex items-center justify-center space-x-1.5 transition">
+            <i class="fa-solid fa-user-plus"></i>
+            <span>+ Spawn Driver</span>
+          </button>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-slate-800 text-xs">
+          <span class="text-slate-400">Auto Simulator Mode:</span>
+          <button id="simToggleBtn" onclick="toggleAutoSim()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition">
+            Start Auto Load Test
+          </button>
+        </div>
+      </div>
+
+      <!-- Mutex Lock Engine Visualizer -->
+      <div id="mutexPanel" class="glass-panel p-4 rounded-2xl transition-all duration-300">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center">
+            <i class="fa-solid fa-lock text-amber-400 mr-2"></i> Dispatch Lock Guard (Mutex)
+          </h3>
+          <span id="lockBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-900/60 text-emerald-300 border border-emerald-500/30">
+            UNLOCKED / IDLE
+          </span>
+        </div>
+        <div class="flex items-center justify-between text-xs text-slate-400">
+          <span>Race Conditions Prevented:</span>
+          <span id="racePreventedCount" class="font-mono font-bold text-amber-400">0</span>
+        </div>
+      </div>
+
+      <!-- Pending FIFO Dispatch Queue Visualizer -->
+      <div class="glass-panel p-4 rounded-2xl flex-1 flex flex-col min-h-[280px]">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center space-x-2">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300">
+              <i class="fa-solid fa-list-ol text-blue-400 mr-2"></i> FIFO Request Queue
+            </h2>
+            <span id="queueCountBadge" class="px-2 py-0.5 text-xs font-mono rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold">
+              0 Items
+            </span>
+          </div>
+          <button onclick="clearQueue()" class="text-xs text-slate-500 hover:text-red-400 transition" title="Clear Pending Queue">
+            <i class="fa-solid fa-trash-can"></i> Clear
+          </button>
+        </div>
+
+        <!-- FIFO Queue List Lane -->
+        <div id="queueLane" class="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[300px]">
+          <div id="emptyQueueMsg" class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500 border border-dashed border-slate-800 rounded-xl">
+            <i class="fa-solid fa-inbox text-3xl mb-2 text-slate-600"></i>
+            <p class="text-xs">Queue is empty. Create a new request or enable auto simulation.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT CONTENT: Live Map Canvas, Real-Time Telemetry & HUD (7 Cols) -->
+    <div class="lg:col-span-7 flex flex-col space-y-5">
+
+      <!-- Perspective Context Specific Dynamic Live Card HUD -->
+      <div id="hudCard" class="glass-panel p-4 rounded-2xl border-l-4 border-l-indigo-500 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+        <div class="glass-card p-2.5 rounded-xl">
+          <div class="text-[10px] text-slate-400 uppercase">Active Status</div>
+          <div id="hudStatus" class="text-sm font-extrabold text-emerald-400">SYSTEM READY</div>
+        </div>
+        <div class="glass-card p-2.5 rounded-xl">
+          <div class="text-[10px] text-slate-400 uppercase">Est. Distance</div>
+          <div id="hudDistance" class="text-sm font-extrabold text-blue-400">0.0 km</div>
+        </div>
+        <div class="glass-card p-2.5 rounded-xl">
+          <div class="text-[10px] text-slate-400 uppercase">Live ETA</div>
+          <div id="hudETA" class="text-sm font-extrabold text-amber-400">-- min</div>
+        </div>
+        <div class="glass-card p-2.5 rounded-xl">
+          <div class="text-[10px] text-slate-400 uppercase">Assigned Node</div>
+          <div id="hudAssigned" class="text-sm font-extrabold text-purple-400">Unassigned</div>
+        </div>
+      </div>
+
+      <!-- Live GPS Map Canvas -->
+      <div class="glass-panel p-4 rounded-2xl flex flex-col relative">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center space-x-2">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center">
+              <i class="fa-solid fa-map-location-dot text-emerald-400 mr-2"></i> Live Interactive GPS Map
+            </h2>
+            <span class="text-[11px] text-slate-500 hidden sm:inline">(Click map to set points)</span>
+          </div>
+          <!-- Legend Badges -->
+          <div class="flex items-center space-x-3 text-[11px]">
+            <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 mr-1"></span> Customer</span>
+            <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 mr-1"></span> Driver</span>
+            <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 mr-1"></span> Destination</span>
+          </div>
+        </div>
+
+        <!-- Canvas Frame -->
+        <div class="relative w-full aspect-[16/9] sm:aspect-[2/1] rounded-xl overflow-hidden border border-slate-800 bg-slate-900">
+          <canvas id="mapCanvas" class="w-full h-full block"></canvas>
+
+          <!-- Floating Map Legend Overlay -->
+          <div class="absolute bottom-3 left-3 glass-card px-3 py-2 rounded-xl text-[11px] font-mono text-slate-300 pointer-events-none space-y-1">
+            <div class="flex items-center"><i class="fa-solid fa-satellite text-blue-400 mr-1.5"></i> Dual-Node Live Tracking</div>
+            <div class="flex items-center"><i class="fa-solid fa-route text-emerald-400 mr-1.5"></i> Real-Time Vector Route</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fleet Drivers Control & Interactive Live Logs -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+        <!-- Drivers List Panel with Status Change Simulation -->
+        <div class="glass-panel p-4 rounded-2xl flex flex-col max-h-[260px]">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center">
+              <i class="fa-solid fa-users text-purple-400 mr-2"></i> Fleet Drivers Telemetry
+            </h3>
+            <span id="driverCountText" class="text-xs font-mono text-slate-400">0 Drivers</span>
+          </div>
+          <div id="driverList" class="flex-1 overflow-y-auto space-y-2 pr-1">
+            <!-- Rendered driver cards -->
+          </div>
+        </div>
+
+        <!-- System Event Stream Log -->
+        <div class="glass-panel p-4 rounded-2xl flex flex-col max-h-[260px]">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center">
+              <i class="fa-solid fa-terminal text-emerald-400 mr-2"></i> Live Event Logs
+            </h3>
+            <span class="text-[10px] font-mono text-emerald-400 animate-pulse">● LIVE STREAM</span>
+          </div>
+          <div id="eventLogContainer" class="flex-1 overflow-y-auto glass-card p-2.5 rounded-xl font-mono text-[11px] space-y-1.5 text-slate-300">
+            <div class="text-slate-500">[System] Engine initialized. Mutual GPS telemetry active.</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Modal Component: Add Custom Request -->
+  <div id="requestModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="glass-panel max-w-md w-full p-6 rounded-2xl shadow-2xl border border-slate-700 relative">
+      <button onclick="closeRequestModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+
+      <h3 class="text-lg font-bold text-white mb-1 flex items-center">
+        <i id="modalTypeIcon" class="fa-solid fa-car text-blue-400 mr-2"></i>
+        <span id="modalTitleText">Create Dispatch Request</span>
+      </h3>
+      <p class="text-xs text-slate-400 mb-4">Queues request into FIFO system with coordinates.</p>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-300 mb-1 font-semibold">Customer / Package Name</label>
+          <input type="text" id="custNameInput" value="Alex Rivera" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-blue-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-300 mb-1 font-semibold">Pickup (X, Y)</label>
+            <div class="flex space-x-1">
+              <input type="number" id="pickupX" placeholder="X" value="120" class="w-1/2 bg-slate-900 border border-slate-700 rounded-lg p-2 text-center text-slate-200">
+              <input type="number" id="pickupY" placeholder="Y" value="100" class="w-1/2 bg-slate-900 border border-slate-700 rounded-lg p-2 text-center text-slate-200">
+            </div>
+          </div>
+          <div>
+            <label class="block text-slate-300 mb-1 font-semibold">Dropoff (X, Y)</label>
+            <div class="flex space-x-1">
+              <input type="number" id="dropX" placeholder="X" value="480" class="w-1/2 bg-slate-900 border border-slate-700 rounded-lg p-2 text-center text-slate-200">
+              <input type="number" id="dropY" placeholder="Y" value="260" class="w-1/2 bg-slate-900 border border-slate-700 rounded-lg p-2 text-center text-slate-200">
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-300 mb-1 font-semibold">Dispatch Queue Mode</label>
+          <select id="requestPriority" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200">
+            <option value="STANDARD">Standard Order (FIFO Queue)</option>
+            <option value="EXPRESS">Express Priority (Queue Shift)</option>
+          </select>
+        </div>
+
+        <div class="pt-3 flex justify-end space-x-2">
+          <button onclick="closeRequestModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg">Cancel</button>
+          <button onclick="submitManualRequest()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-lg shadow-blue-600/30">
+            Enqueue Order
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Application Engine -->
+  <script>
+    /**
+     * Web Audio API Synthesizer Sound System
+     */
+    let audioCtx = null;
+    let soundEnabled = true;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playSound(type) {
+      if (!soundEnabled) return;
+      initAudio();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      if (type === 'ENQUEUE') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(350, now);
+        osc.frequency.exponentialRampToValueAtTime(700, now + 0.15);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      } else if (type === 'DISPATCH') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.08);
+        osc.frequency.setValueAtTime(783.99, now + 0.16);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      } else if (type === 'COMPLETE') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(800, now + 0.25);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      } else if (type === 'LOCK') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(140, now);
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+        osc.start(now);
+        osc.stop(now + 0.06);
+      }
+    }
+
+    function toggleAudio() {
+      soundEnabled = !soundEnabled;
+      const icon = document.getElementById('soundIcon');
+      icon.className = soundEnabled ? 'fa-solid fa-volume-high text-blue-400' : 'fa-solid fa-volume-xmark text-slate-500';
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const themeIcon = document.getElementById('themeIcon');
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        themeIcon.className = 'fa-solid fa-sun text-amber-500';
+      } else {
+        html.classList.add('dark');
+        themeIcon.className = 'fa-solid fa-moon text-amber-400';
+      }
+    }
+
+    /**
+     * Mutex Locking Mechanism to prevent Race Conditions
+     */
+    class Mutex {
+      constructor() {
+        this.locked = false;
+        this.queue = [];
+      }
+
+      async lock() {
+        return new Promise((resolve) => {
+          if (!this.locked) {
+            this.locked = true;
+            resolve();
+          } else {
+            this.queue.push(resolve);
+          }
+        });
+      }
+
+      unlock() {
+        if (this.queue.length > 0) {
+          const next = this.queue.shift();
+          next();
+        } else {
+          this.locked = false;
+        }
+      }
+    }
+
+    /**
+     * Queue Data Structure (FIFO)
+     */
+    class DispatchQueue {
+      constructor() {
+        this.items = [];
+      }
+
+      enqueue(req) {
+        if (req.priority === 'EXPRESS') {
+          let idx = this.items.findIndex(i => i.priority !== 'EXPRESS');
+          if (idx === -1) this.items.push(req);
+          else this.items.splice(idx, 0, req);
+        } else {
+          this.items.push(req);
+        }
+      }
+
+      dequeue() {
+        return this.items.shift();
+      }
+
+      peek() {
+        return this.items[0] || null;
+      }
+
+      isEmpty() {
+        return this.items.length === 0;
+      }
+
+      size() {
+        return this.items.length;
+      }
+
+      clear() {
+        this.items = [];
+      }
+    }
+
+    // Engine Global Data
+    const requestQueue = new DispatchQueue();
+    const dispatchMutex = new Mutex();
+
+    let drivers = [];
+    let activeDispatches = [];
+    let currentPerspective = 'DISPATCH'; // 'DISPATCH', 'CUSTOMER', 'DRIVER'
+    let currentModalType = 'RIDE';
+
+    let raceConditionCount = 0;
+    let autoSimInterval = null;
+    let isAutoSimRunning = false;
+
+    let canvas, ctx;
+
+    /**
+     * Window Onload Initializer
+     */
+    window.onload = function() {
+      canvas = document.getElementById('mapCanvas');
+      ctx = canvas.getContext('2d');
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      // Seed Initial Drivers
+      seedFleet();
+
+      // Click on canvas to add request
+      canvas.addEventListener('click', handleCanvasClick);
+
+      // Animation Loop Start
+      requestAnimationFrame(renderLoop);
+
+      updateUI();
+    };
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+
+    function seedFleet() {
+      const fleetNames = ['David Miller', 'Sarah Connor', 'Marcus Vance', 'Elena Rostova'];
+      drivers = fleetNames.map((name, i) => ({
+        id: 'DRV-' + (201 + i),
+        name: name,
+        x: Math.random() * (canvas.width - 120) + 60,
+        y: Math.random() * (canvas.height - 100) + 50,
+        status: 'ONLINE', // ONLINE, EN_ROUTE, ARRIVED, IN_TRANSIT, COMPLETED
+        currentJob: null,
+        completedRides: 0
+      }));
+      updateDriverListUI();
+    }
+
+    function spawnDriver() {
+      const names = ['Jordan T.', 'Siddharth M.', 'Chloe B.', 'Carlos R.'];
+      const randomName = names[Math.floor(Math.random() * names.length)];
+      const d = {
+        id: 'DRV-' + Math.floor(300 + Math.random() * 600),
+        name: randomName,
+        x: Math.random() * (canvas.width - 120) + 60,
+        y: Math.random() * (canvas.height - 100) + 50,
+        status: 'ONLINE',
+        currentJob: null,
+        completedRides: 0
+      };
+      drivers.push(d);
+      logEvent(`Driver ${d.name} (${d.id}) came ONLINE.`, 'info');
+      updateDriverListUI();
+    }
+
+    /**
+     * Add Request to Queue
+     */
+    function createRequest(type, custName, pX, pY, dX, dY, priority = 'STANDARD') {
+      const req = {
+        id: 'REQ-' + Math.floor(1000 + Math.random() * 9000),
+        type: type,
+        customer: custName,
+        pickup: { x: pX, y: pY },
+        dropoff: { x: dX, y: dY },
+        timestamp: Date.now(),
+        priority: priority,
+        status: 'QUEUED'
+      };
+
+      requestQueue.enqueue(req);
+      playSound('ENQUEUE');
+      logEvent(`[ENQUEUE] ${req.type} request created for ${req.customer}.`, 'enqueue');
+      updateUI();
+    }
+
+    /**
+     * Dispatch Core Engine with Race Prevention Lock
+     */
+    async function processDispatchQueue() {
+      if (dispatchMutex.locked) {
+        raceConditionCount++;
+        document.getElementById('racePreventedCount').innerText = raceConditionCount;
+        logEvent(`[MUTEX] Concurrent dispatch request blocked. Lock in hold!`, 'warn');
+      }
+
+      updateMutexVisual(true);
+      playSound('LOCK');
+
+      await dispatchMutex.lock();
+
+      try {
+        if (requestQueue.isEmpty()) {
+          logEvent(`[DISPATCH] Queue empty. No pending jobs.`, 'info');
+          return;
+        }
+
+        const candidate = requestQueue.peek();
+
+        // Search closest ONLINE driver
+        let bestDriver = null;
+        let minDist = Infinity;
+
+        drivers.forEach(d => {
+          if (d.status === 'ONLINE') {
+            const dist = Math.hypot(d.x - candidate.pickup.x, d.y - candidate.pickup.y);
+            if (dist < minDist) {
+              minDist = dist;
+              bestDriver = d;
+            }
+          }
+        });
+
+        if (bestDriver) {
+          const req = requestQueue.dequeue();
+          req.status = 'DISPATCHED';
+
+          bestDriver.status = 'EN_ROUTE';
+          bestDriver.currentJob = req;
+
+          playSound('DISPATCH');
+          logEvent(`[MATCH SUCCESS] Job ${req.id} assigned to ${bestDriver.name}.`, 'success');
+
+          activeDispatches.push({
+            id: req.id,
+            driver: bestDriver,
+            request: req,
+            stage: 'EN_ROUTE', // EN_ROUTE -> ARRIVED -> IN_TRANSIT -> COMPLETED
+            progress: 0
+          });
+        } else {
+          logEvent(`[DISPATCH SKIPPED] No ONLINE driver available for request ${candidate.id}.`, 'warn');
+        }
+
+      } finally {
+        setTimeout(() => {
+          dispatchMutex.unlock();
+          updateMutexVisual(false);
+          updateUI();
+        }, 300);
+      }
+    }
+
+    function triggerManualDispatch() {
+      processDispatchQueue();
+    }
+
+    /**
+     * Browser Device GPS Location Integration
+     */
+    function acquireBrowserGPS() {
+      if (!navigator.geolocation) {
+        logEvent('Browser Geolocation is not supported in this environment.', 'warn');
+        return;
+      }
+
+      logEvent('Acquiring live browser GPS coordinates...', 'info');
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          // Map Lat/Lng into local canvas space
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          const pX = Math.floor(Math.abs(lng * 1000) % (canvas.width - 120)) + 60;
+          const pY = Math.floor(Math.abs(lat * 1000) % (canvas.height - 100)) + 50;
+
+          createRequest('RIDE', 'GPS Device User', pX, pY, Math.min(canvas.width - 40, pX + 160), Math.min(canvas.height - 40, pY + 80));
+          logEvent(`[GPS LOCATED] Position mapped to Canvas (${pX}, ${pY}). Request created.`, 'success');
+        },
+        (error) => {
+          logEvent(`GPS Permission denied or unavailable: ${error.message}. Fallback simulated.`, 'warn');
+          // Fallback simulation
+          createRequest('RIDE', 'GPS User (Simulated)', 180, 140, 420, 260);
+        }
+      );
+    }
+
+    /**
+     * Perspective Switcher Logic
+     */
+    function switchPerspective(mode) {
+      currentPerspective = mode;
+
+      const dispatchBtn = document.getElementById('viewDispatchBtn');
+      const custBtn = document.getElementById('viewCustomerBtn');
+      const driverBtn = document.getElementById('viewDriverBtn');
+
+      // Reset style classes
+      [dispatchBtn, custBtn, driverBtn].forEach(btn => {
+        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition flex items-center space-x-2';
+      });
+
+      const headerTitle = document.getElementById('perspectiveTitle');
+      const headerDesc = document.getElementById('perspectiveDesc');
+      const headerBadge = document.getElementById('perspectiveBadge');
+      const headerIcon = document.getElementById('perspectiveIcon');
+
+      if (mode === 'DISPATCH') {
+        dispatchBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 bg-blue-600 text-white shadow';
+        headerTitle.innerText = 'Dispatch Central Overview';
+        headerDesc.innerText = 'Monitoring all active fleet nodes & FIFO queue jobs';
+        headerBadge.innerText = 'MASTER FEED';
+        headerIcon.innerHTML = '<i class="fa-solid fa-tower-broadcast"></i>';
+      } else if (mode === 'CUSTOMER') {
+        custBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 bg-blue-600 text-white shadow';
+        headerTitle.innerText = 'Customer GPS Perspective';
+        headerDesc.innerText = 'Live tracking incoming driver arrival & route distance';
+        headerBadge.innerText = 'CUSTOMER HUD';
+        headerIcon.innerHTML = '<i class="fa-solid fa-user-location text-blue-400"></i>';
+      } else {
+        driverBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 bg-blue-600 text-white shadow';
+        headerTitle.innerText = 'Driver Telemetry Perspective';
+        headerDesc.innerText = 'Navigation guidance towards pickup and destination';
+        headerBadge.innerText = 'DRIVER HUD';
+        headerIcon.innerHTML = '<i class="fa-solid fa-route text-emerald-400"></i>';
+      }
+
+      updateUI();
+    }
+
+    /**
+     * UI Updates
+     */
+    function updateUI() {
+      // Queue Counter
+      document.getElementById('queueCountBadge').innerText = `${requestQueue.size()} Items`;
+
+      // Render Queue Items
+      const lane = document.getElementById('queueLane');
+      const emptyMsg = document.getElementById('emptyQueueMsg');
+
+      if (requestQueue.isEmpty()) {
+        lane.innerHTML = '';
+        lane.appendChild(emptyMsg);
+      } else {
+        lane.innerHTML = '';
+        requestQueue.items.forEach((req, idx) => {
+          const itemEl = document.createElement('div');
+          const isExpress = req.priority === 'EXPRESS';
+          const typeIcon = req.type === 'RIDE' ? 'fa-car text-blue-400' : 'fa-box text-amber-400';
+
+          itemEl.className = `glass-card p-3 rounded-xl border-l-4 ${isExpress ? 'border-l-purple-500 bg-purple-950/20' : 'border-l-blue-500'} flex items-center justify-between transition hover:bg-slate-800/60`;
+          itemEl.innerHTML = `
+            <div class="flex items-center space-x-3">
+              <div class="font-mono font-bold text-xs ${idx === 0 ? 'text-emerald-400' : 'text-slate-500'}">
+                #${idx + 1}
+              </div>
+              <div>
+                <div class="text-xs font-bold text-slate-200 flex items-center space-x-1.5">
+                  <i class="fa-solid ${typeIcon}"></i>
+                  <span>${req.customer}</span>
+                  ${isExpress ? '<span class="text-[9px] bg-purple-500/30 text-purple-300 px-1.5 rounded font-mono">EXPRESS</span>' : ''}
+                </div>
+                <div class="text-[10px] text-slate-400 font-mono">
+                  ${req.id} • Pickup: (${req.pickup.x},${req.pickup.y})
+                </div>
+              </div>
+            </div>
+            <div class="text-right font-mono text-[10px]">
+              <span class="${idx === 0 ? 'text-emerald-400 font-bold' : 'text-slate-400'}">${idx === 0 ? 'NEXT DISPATCH' : 'QUEUED'}</span>
+            </div>
+          `;
+          lane.appendChild(itemEl);
+        });
+      }
+
+      updateDriverListUI();
+      updateHUD();
+    }
+
+    function updateDriverListUI() {
+      const list = document.getElementById('driverList');
+      document.getElementById('driverCountText').innerText = `${drivers.length} Drivers`;
+
+      list.innerHTML = '';
+      drivers.forEach(d => {
+        const card = document.createElement('div');
+        card.className = 'glass-card p-2.5 rounded-xl flex items-center justify-between text-xs';
+
+        let badge = '';
+        if (d.status === 'ONLINE') badge = '<span class="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono">ONLINE</span>';
+        else if (d.status === 'EN_ROUTE') badge = '<span class="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-mono">EN ROUTE</span>';
+        else if (d.status === 'ARRIVED') badge = '<span class="text-[9px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full font-mono">ARRIVED</span>';
+        else if (d.status === 'IN_TRANSIT') badge = '<span class="text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-mono">IN TRANSIT</span>';
+
+        card.innerHTML = `
+          <div class="flex items-center space-x-2.5">
+            <div class="w-7 h-7 rounded-lg bg-blue-950/60 border border-blue-500/40 flex items-center justify-center text-blue-400">
+              <i class="fa-solid fa-steering-wheel"></i>
+            </div>
+            <div>
+              <div class="font-bold text-slate-200">${d.name} <span class="text-[10px] text-slate-500 font-mono">(${d.id})</span></div>
+              <div class="text-[10px] text-slate-400 font-mono">Completed: ${d.completedRides}</div>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            ${badge}
+            <button onclick="manualSimulateStatus('${d.id}')" class="text-xs text-blue-400 hover:text-white p-1" title="Simulate Status Change">
+              <i class="fa-solid fa-forward-step"></i>
+            </button>
+          </div>
+        `;
+        list.appendChild(card);
+      });
+    }
+
+    function manualSimulateStatus(driverId) {
+      const d = drivers.find(drv => drv.id === driverId);
+      if (!d) return;
+
+      const active = activeDispatches.find(a => a.driver.id === driverId);
+      if (!active) {
+        logEvent(`Driver ${d.name} has no active dispatch job to step.`, 'info');
+        return;
+      }
+
+      if (d.status === 'EN_ROUTE') {
+        d.status = 'ARRIVED';
+        active.stage = 'ARRIVED';
+        logEvent(`[SIM] Driver ${d.name} ARRIVED at pickup point.`, 'info');
+      } else if (d.status === 'ARRIVED') {
+        d.status = 'IN_TRANSIT';
+        active.stage = 'IN_TRANSIT';
+        logEvent(`[SIM] Driver ${d.name} picked up passenger/package. IN TRANSIT to dropoff.`, 'info');
+      } else if (d.status === 'IN_TRANSIT') {
+        d.status = 'ONLINE';
+        d.completedRides++;
+        const idx = activeDispatches.findIndex(a => a.driver.id === driverId);
+        if (idx !== -1) activeDispatches.splice(idx, 1);
+        playSound('COMPLETE');
+        logEvent(`[SIM] Driver ${d.name} COMPLETED order. Driver back ONLINE.`, 'success');
+      }
+      updateUI();
+    }
+
+    function updateHUD() {
+      const statusEl = document.getElementById('hudStatus');
+      const distEl = document.getElementById('hudDistance');
+      const etaEl = document.getElementById('hudETA');
+      const assignedEl = document.getElementById('hudAssigned');
+
+      const active = activeDispatches[0];
+
+      if (!active) {
+        statusEl.innerText = 'SYSTEM READY';
+        distEl.innerText = '0.0 km';
+        etaEl.innerText = '-- min';
+        assignedEl.innerText = 'Unassigned';
+        return;
+      }
+
+      const d = active.driver;
+      const req = active.request;
+
+      let target = active.stage === 'EN_ROUTE' || active.stage === 'ARRIVED' ? req.pickup : req.dropoff;
+      const pxDist = Math.hypot(target.x - d.x, target.y - d.y);
+      const kmDist = (pxDist / 20).toFixed(1); // Scale pixel to km
+      const etaMin = Math.ceil(kmDist * 2.5);
+
+      statusEl.innerText = d.status.replace('_', ' ');
+      distEl.innerText = `${kmDist} km`;
+      etaEl.innerText = `${etaMin} min`;
+      assignedEl.innerText = currentPerspective === 'CUSTOMER' ? d.name : req.customer;
+    }
+
+    function updateMutexVisual(isLocked) {
+      const panel = document.getElementById('mutexPanel');
+      const badge = document.getElementById('lockBadge');
+
+      if (isLocked) {
+        panel.classList.add('lock-active');
+        badge.innerText = 'LOCKED (EXCLUSIVE)';
+        badge.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-500/30';
+      } else {
+        panel.classList.remove('lock-active');
+        badge.innerText = 'UNLOCKED / IDLE';
+        badge.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-900/60 text-emerald-300 border border-emerald-500/30';
+      }
+    }
+
+    function logEvent(msg, type = 'info') {
+      const container = document.getElementById('eventLogContainer');
+      const entry = document.createElement('div');
+      const time = new Date().toLocaleTimeString().split(' ')[0];
+
+      let color = 'text-slate-300';
+      if (type === 'enqueue') color = 'text-blue-300';
+      if (type === 'success') color = 'text-emerald-400';
+      if (type === 'warn') color = 'text-amber-400';
+
+      entry.className = color;
+      entry.innerHTML = `<span class="text-slate-500">[${time}]</span> ${msg}`;
+
+      container.appendChild(entry);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function clearQueue() {
+      requestQueue.clear();
+      logEvent('Queue cleared manually.', 'info');
+      updateUI();
+    }
+
+    function toggleAutoSim() {
+      isAutoSimRunning = !isAutoSimRunning;
+      const btn = document.getElementById('simToggleBtn');
+
+      if (isAutoSimRunning) {
+        btn.innerText = 'Stop Simulation';
+        btn.className = 'px-3 py-1 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-semibold transition pulse-glow';
+        logEvent('[SIMULATOR] High-frequency load testing started.', 'info');
+
+        autoSimInterval = setInterval(() => {
+          const names = ['Jordan B.', 'Taco King', 'Rachel Green', 'Fast Courier', 'Sam W.'];
+          const randomName = names[Math.floor(Math.random() * names.length)];
+          const pX = Math.floor(Math.random() * (canvas.width - 120)) + 60;
+          const pY = Math.floor(Math.random() * (canvas.height - 100)) + 50;
+          const dX = Math.floor(Math.random() * (canvas.width - 120)) + 60;
+          const dY = Math.floor(Math.random() * (canvas.height - 100)) + 50;
+
+          createRequest(Math.random() > 0.5 ? 'RIDE' : 'DELIVERY', randomName, pX, pY, dX, dY);
+
+          if (Math.random() > 0.3) {
+            processDispatchQueue();
+          }
+        }, 2400);
+      } else {
+        clearInterval(autoSimInterval);
+        btn.innerText = 'Start Auto Load Test';
+        btn.className = 'px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition';
+        logEvent('[SIMULATOR] Simulation paused.', 'info');
+      }
+    }
+
+    /**
+     * Map Canvas Render Loop
+     */
+    function renderLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Grid Lines
+      drawMapGrid();
+
+      // Render Queued Pickups on Map
+      requestQueue.items.forEach((req) => {
+        drawPin(req.pickup.x, req.pickup.y, req.type === 'RIDE' ? '#3b82f6' : '#f59e0b', req.customer, 'PICKUP');
+      });
+
+      // Render Drivers
+      drivers.forEach(drv => {
+        ctx.beginPath();
+        ctx.arc(drv.x, drv.y, 8, 0, Math.PI * 2);
+        ctx.fillStyle = drv.status === 'ONLINE' ? '#10b981' : '#f59e0b';
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '10px "Plus Jakarta Sans", sans-serif';
+        ctx.fillText(drv.name, drv.x + 12, drv.y + 4);
+      });
+
+      // Active Route Movement Motion Physics
+      for (let i = activeDispatches.length - 1; i >= 0; i--) {
+        const dispatch = activeDispatches[i];
+        const driver = dispatch.driver;
+        const req = dispatch.request;
+
+        let targetX, targetY;
+        if (dispatch.stage === 'EN_ROUTE' || dispatch.stage === 'ARRIVED') {
+          targetX = req.pickup.x;
+          targetY = req.pickup.y;
+        } else {
+          targetX = req.dropoff.x;
+          targetY = req.dropoff.y;
+        }
+
+        const dx = targetX - driver.x;
+        const dy = targetY - driver.y;
+        const dist = Math.hypot(dx, dy);
+
+        // Render Vector Path Line
+        ctx.beginPath();
+        ctx.moveTo(driver.x, driver.y);
+        ctx.lineTo(targetX, targetY);
+        ctx.strokeStyle = dispatch.stage === 'EN_ROUTE' ? 'rgba(245, 158, 11, 0.7)' : 'rgba(16, 185, 129, 0.7)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 6]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Target Pin
+        drawPin(targetX, targetY, dispatch.stage === 'EN_ROUTE' ? '#3b82f6' : '#ec4899', req.customer, dispatch.stage === 'EN_ROUTE' ? 'PICKUP' : 'DESTINATION');
+
+        // Movement Step
+        if (dist > 3) {
+          driver.x += (dx / dist) * 1.8;
+          driver.y += (dy / dist) * 1.8;
+        } else {
+          if (dispatch.stage === 'EN_ROUTE') {
+            driver.status = 'ARRIVED';
+            dispatch.stage = 'ARRIVED';
+            logEvent(`Driver ${driver.name} ARRIVED at pickup point.`, 'info');
+
+            // Auto transition to transit after short pause
+            setTimeout(() => {
+              if (driver.status === 'ARRIVED') {
+                driver.status = 'IN_TRANSIT';
+                dispatch.stage = 'IN_TRANSIT';
+                logEvent(`Driver ${driver.name} IN TRANSIT to destination.`, 'info');
+              }
+            }, 1200);
+
+          } else if (dispatch.stage === 'IN_TRANSIT') {
+            driver.status = 'ONLINE';
+            driver.completedRides++;
+            playSound('COMPLETE');
+            logEvent(`[COMPLETED] Order ${req.id} delivered. Driver ${driver.name} is now ONLINE.`, 'success');
+            activeDispatches.splice(i, 1);
+            updateUI();
+          }
+        }
+      }
+
+      updateHUD();
+      requestAnimationFrame(renderLoop);
+    }
+
+    function drawMapGrid() {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+      ctx.lineWidth = 1;
+      const size = 35;
+
+      for (let x = 0; x < canvas.width; x += size) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += size) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+    }
+
+    function drawPin(x, y, color, label, type) {
+      ctx.beginPath();
+      ctx.arc(x, y, 6, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillText(`${type}: ${label}`, x + 8, y - 4);
+    }
+
+    function handleCanvasClick(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.round(e.clientX - rect.left);
+      const y = Math.round(e.clientY - rect.top);
+
+      openRequestModal('RIDE', x, y);
+    }
+
+    /**
+     * Modal Form Methods
+     */
+    function openRequestModal(type, pX = null, pY = null) {
+      currentModalType = type;
+      const modal = document.getElementById('requestModal');
+      const icon = document.getElementById('modalTypeIcon');
+      const title = document.getElementById('modalTitleText');
+
+      if (type === 'RIDE') {
+        icon.className = 'fa-solid fa-car text-blue-400 mr-2';
+        title.innerText = 'Create Ride Request';
+      } else {
+        icon.className = 'fa-solid fa-box text-amber-400 mr-2';
+        title.innerText = 'Create Package Delivery Order';
+      }
+
+      if (pX !== null && pY !== null) {
+        document.getElementById('pickupX').value = pX;
+        document.getElementById('pickupY').value = pY;
+        document.getElementById('dropX').value = Math.min(canvas.width - 40, pX + 160);
+        document.getElementById('dropY').value = Math.min(canvas.height - 40, pY + 80);
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeRequestModal() {
+      document.getElementById('requestModal').classList.add('hidden');
+    }
+
+    function submitManualRequest() {
+      const name = document.getElementById('custNameInput').value || 'Customer';
+      const pX = parseInt(document.getElementById('pickupX').value) || 100;
+      const pY = parseInt(document.getElementById('pickupY').value) || 100;
+      const dX = parseInt(document.getElementById('dropX').value) || 320;
+      const dY = parseInt(document.getElementById('dropY').value) || 200;
+      const priority = document.getElementById('requestPriority').value;
+
+      createRequest(currentModalType, name, pX, pY, dX, dY, priority);
+      closeRequestModal();
+    }
+  </script>
+</body>
+</html>
